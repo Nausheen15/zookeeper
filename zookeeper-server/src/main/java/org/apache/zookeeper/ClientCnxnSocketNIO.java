@@ -39,11 +39,15 @@ import org.apache.zookeeper.client.ZKClientConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.checkerframework.checker.calledmethods.qual.*;
+import org.checkerframework.checker.mustcall.qual.*;
+
+@InheritableMustCall("cleanup")
 public class ClientCnxnSocketNIO extends ClientCnxnSocket {
 
     private static final Logger LOG = LoggerFactory.getLogger(ClientCnxnSocketNIO.class);
 
-    private final Selector selector = Selector.open();
+    private final @Owning Selector selector = Selector.open();
 
     private SelectionKey sockKey;
 
@@ -185,6 +189,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
     }
 
     @Override
+    @EnsuresCalledMethods(value="this.sockKey", methods="close")
     void cleanup() {
         if (sockKey != null) {
             SocketChannel sock = (SocketChannel) sockKey.channel();
@@ -219,6 +224,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
     }
 
     @Override
+    @EnsuresCalledMethods(value="this.selector", methods="close")
     void close() {
         try {
             if (LOG.isTraceEnabled()) {
@@ -255,7 +261,8 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
      * @param addr the address of remote host
      * @throws IOException
      */
-    void registerAndConnect(SocketChannel sock, InetSocketAddress addr) throws IOException {
+    @CreatesMustCallFor("this")
+    void registerAndConnect(@Owning SocketChannel sock, InetSocketAddress addr) throws IOException {
         sockKey = sock.register(selector, SelectionKey.OP_CONNECT);
         boolean immediateConnect = sock.connect(addr);
         if (immediateConnect) {
@@ -264,6 +271,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
     }
 
     @Override
+    @CreatesMustCallFor("this")
     void connect(InetSocketAddress addr) throws IOException {
         SocketChannel sock = createSock();
         try {

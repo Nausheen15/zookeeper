@@ -30,6 +30,8 @@ import javax.net.ssl.SSLSocket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.checkerframework.checker.calledmethods.qual.*;
+import org.checkerframework.checker.mustcall.qual.*;
 /**
  * Wrapper class for an SSLContext + some config options that can't be set on the context when it is created but
  * must be set on a secure socket created by the context after the socket creation. By wrapping the options in this
@@ -69,11 +71,11 @@ public class SSLContextAndOptions {
         return sslContext;
     }
 
-    public SSLSocket createSSLSocket() throws IOException {
+    public @MustCall({}) SSLSocket createSSLSocket() throws IOException {
         return configureSSLSocket((SSLSocket) sslContext.getSocketFactory().createSocket(), true);
     }
 
-    public SSLSocket createSSLSocket(Socket socket, byte[] pushbackBytes) throws IOException {
+    public @MustCallAlias SSLSocket createSSLSocket(@MustCallAlias Socket socket, byte[] pushbackBytes) throws IOException {
         SSLSocket sslSocket;
         if (pushbackBytes != null && pushbackBytes.length > 0) {
             sslSocket = (SSLSocket) sslContext.getSocketFactory()
@@ -84,7 +86,7 @@ public class SSLContextAndOptions {
         return configureSSLSocket(sslSocket, false);
     }
 
-    public SSLServerSocket createSSLServerSocket() throws IOException {
+    public @MustCall({}) SSLServerSocket createSSLServerSocket() throws IOException {
         SSLServerSocket sslServerSocket = (SSLServerSocket) sslContext.getServerSocketFactory().createServerSocket();
         return configureSSLServerSocket(sslServerSocket);
     }
@@ -98,7 +100,7 @@ public class SSLContextAndOptions {
         return handshakeDetectionTimeoutMillis;
     }
 
-    private SSLSocket configureSSLSocket(SSLSocket socket, boolean isClientSocket) {
+    private @MustCallAlias SSLSocket configureSSLSocket(@MustCallAlias SSLSocket socket, boolean isClientSocket) {
         SSLParameters sslParameters = socket.getSSLParameters();
         configureSslParameters(sslParameters, isClientSocket);
         socket.setSSLParameters(sslParameters);
@@ -106,7 +108,7 @@ public class SSLContextAndOptions {
         return socket;
     }
 
-    private SSLServerSocket configureSSLServerSocket(SSLServerSocket socket) {
+    private @MustCallAlias SSLServerSocket configureSSLServerSocket(@MustCallAlias SSLServerSocket socket) {
         SSLParameters sslParameters = socket.getSSLParameters();
         configureSslParameters(sslParameters, false);
         socket.setSSLParameters(sslParameters);

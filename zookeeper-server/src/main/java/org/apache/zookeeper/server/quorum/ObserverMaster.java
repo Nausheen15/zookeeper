@@ -47,6 +47,9 @@ import org.apache.zookeeper.server.quorum.auth.QuorumAuthServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.checkerframework.checker.calledmethods.qual.*;
+import org.checkerframework.checker.mustcall.qual.*;
+
 /**
  * Used by Followers to host Observers. This reduces the network load on the Leader process by pushing
  * the responsibility for keeping Observers in sync off the leading peer.
@@ -63,6 +66,7 @@ import org.slf4j.LoggerFactory;
  *
  * The logic is quite a bit simpler than the corresponding logic in Leader because it only hosts observers.
  */
+@InheritableMustCall("stop")
 public class ObserverMaster extends LearnerMaster implements Runnable {
 
     private static final Logger LOG = LoggerFactory.getLogger(ObserverMaster.class);
@@ -132,7 +136,7 @@ public class ObserverMaster extends LearnerMaster implements Runnable {
     }
 
     private Thread thread;
-    private ServerSocket ss;
+    private @Owning ServerSocket ss;
     private boolean listenerRunning;
     private ScheduledExecutorService pinger;
 
@@ -425,6 +429,7 @@ public class ObserverMaster extends LearnerMaster implements Runnable {
         sendPacket(informAndActivateQP);
     }
 
+    @CreatesMustCallFor("this")
     public synchronized void start() throws IOException {
         if (thread != null && thread.isAlive()) {
             return;
@@ -481,6 +486,7 @@ public class ObserverMaster extends LearnerMaster implements Runnable {
          */
     }
 
+    @EnsuresCalledMethods(value="this.ss", methods="close")
     public synchronized void stop() {
         listenerRunning = false;
         if (pinger != null) {

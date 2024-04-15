@@ -75,6 +75,8 @@ import org.apache.zookeeper.util.ServiceUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.checkerframework.checker.calledmethods.qual.*;
+import org.checkerframework.checker.mustcall.qual.*;
 
 /**
  * This class implements a connection manager for leader election using TCP. It
@@ -463,6 +465,7 @@ public class QuorumCnxManager {
 
     }
 
+    @EnsuresCalledMethodsIf(expression="#1", result=false, methods="close")
     private boolean startConnection(Socket sock, Long sid) throws IOException {
         DataOutputStream dout = null;
         DataInputStream din = null;
@@ -546,7 +549,7 @@ public class QuorumCnxManager {
      * possible long value to lose the challenge.
      *
      */
-    public void receiveConnection(final Socket sock) {
+    public void receiveConnection(final @Owning Socket sock) {
         DataInputStream din = null;
         try {
             din = new DataInputStream(new BufferedInputStream(sock.getInputStream()));
@@ -564,7 +567,7 @@ public class QuorumCnxManager {
      * Server receives a connection request and handles it asynchronously via
      * separate thread.
      */
-    public void receiveConnectionAsync(final Socket sock) {
+    public void receiveConnectionAsync(final @Owning Socket sock) {
         try {
             LOG.debug("Async handling of connection request received from: {}", sock.getRemoteSocketAddress());
             connectionExecutor.execute(new QuorumConnectionReceiverThread(sock));
@@ -579,10 +582,11 @@ public class QuorumCnxManager {
     /**
      * Thread to receive connection request from peer server.
      */
+    @InheritableMustCall("finish")
     private class QuorumConnectionReceiverThread extends ZooKeeperThread {
 
         private final Socket sock;
-        QuorumConnectionReceiverThread(final Socket sock) {
+        @MustCallAlias QuorumConnectionReceiverThread(final  @MustCallAlias Socket sock) {
             super("QuorumConnectionReceiverThread-" + sock.getRemoteSocketAddress());
             this.sock = sock;
         }
@@ -594,7 +598,7 @@ public class QuorumCnxManager {
 
     }
 
-    private void handleConnection(Socket sock, DataInputStream din) throws IOException {
+    private void handleConnection(@Owning Socket sock, DataInputStream din) throws IOException {
         Long sid = null, protocolVersion = null;
         MultipleAddresses electionAddr = null;
 
@@ -862,6 +866,7 @@ public class QuorumCnxManager {
      * @param sock
      *            Reference to socket
      */
+    @EnsuresCalledMethods(value="#1", methods="close")
     private void closeSocket(Socket sock) {
         if (sock == null) {
             return;
@@ -1015,7 +1020,7 @@ public class QuorumCnxManager {
         }
 
         class ListenerHandler implements Runnable, Closeable {
-            private ServerSocket serverSocket;
+            private @Owning ServerSocket serverSocket;
             private InetSocketAddress address;
             private boolean portUnification;
             private boolean sslQuorum;
@@ -1051,6 +1056,7 @@ public class QuorumCnxManager {
             }
 
             @Override
+            @EnsuresCalledMethods(value="this.serverSocket", methods="close")
             public synchronized void close() throws IOException {
                 if (serverSocket != null && !serverSocket.isClosed()) {
                     LOG.debug("Trying to close listeners: {}", serverSocket);
@@ -1061,6 +1067,7 @@ public class QuorumCnxManager {
             /**
              * Sleeps on accept().
              */
+            @CreatesMustCallFor("this")
             private void acceptConnections() {
                 int numRetries = 0;
                 Socket client = null;
@@ -1151,10 +1158,11 @@ public class QuorumCnxManager {
      * soon as there is one available. If connection breaks, then opens a new
      * one.
      */
+    @InheritableMustCall("finish")
     class SendWorker extends ZooKeeperThread {
 
         Long sid;
-        Socket sock;
+        @Owning Socket sock;
         RecvWorker recvWorker;
         volatile boolean running = true;
         DataOutputStream dout;
@@ -1169,7 +1177,7 @@ public class QuorumCnxManager {
          * @param sid
          *            Server identifier of remote peer
          */
-        SendWorker(Socket sock, Long sid) {
+        @MustCallAlias SendWorker(@MustCallAlias Socket sock, Long sid) {
             super("SendWorker:" + sid);
             this.sid = sid;
             this.sock = sock;
@@ -1197,6 +1205,7 @@ public class QuorumCnxManager {
             return recvWorker;
         }
 
+        @EnsuresCalledMethods(value="this.sock", methods="close")
         synchronized boolean finish() {
             LOG.debug("Calling SendWorker.finish for {}", sid);
 
@@ -1333,15 +1342,16 @@ public class QuorumCnxManager {
      * Thread to receive messages. Instance waits on a socket read. If the
      * channel breaks, then removes itself from the pool of receivers.
      */
+    @InheritableMustCall("run")
     class RecvWorker extends ZooKeeperThread {
 
         Long sid;
-        Socket sock;
+        @Owning Socket sock;
         volatile boolean running = true;
         final DataInputStream din;
         final SendWorker sw;
 
-        RecvWorker(Socket sock, DataInputStream din, Long sid, SendWorker sw) {
+        RecvWorker(@Owning Socket sock, DataInputStream din, Long sid, SendWorker sw) {
             super("RecvWorker:" + sid);
             this.sid = sid;
             this.sock = sock;
@@ -1378,6 +1388,7 @@ public class QuorumCnxManager {
         }
 
         @Override
+        @EnsuresCalledMethods(value = { "this.sock", "this.sw" }, methods = { "finish" })
         public void run() {
             threadCnt.incrementAndGet();
             try {

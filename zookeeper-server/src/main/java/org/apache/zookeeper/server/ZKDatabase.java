@@ -63,12 +63,16 @@ import org.apache.zookeeper.txn.TxnHeader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.checkerframework.checker.calledmethods.qual.*;
+import org.checkerframework.checker.mustcall.qual.*;
+
 /**
  * This class maintains the in memory database of zookeeper
  * server states that includes the sessions, datatree and the
  * committed logs. It is booted up  after reading the logs
  * and snapshots from the disk.
  */
+@InheritableMustCall("close")
 public class ZKDatabase {
 
     private static final Logger LOG = LoggerFactory.getLogger(ZKDatabase.class);
@@ -79,7 +83,7 @@ public class ZKDatabase {
      */
     protected DataTree dataTree;
     protected ConcurrentHashMap<Long, Integer> sessionsWithTimeouts;
-    protected FileTxnSnapLog snapLog;
+    protected @Owning FileTxnSnapLog snapLog;
     protected long minCommittedLog, maxCommittedLog;
 
     /**
@@ -668,6 +672,7 @@ public class ZKDatabase {
      * @param si the request to append
      * @return true if the append was succesfull and false if not
      */
+    @CreatesMustCallFor("this")
     public boolean append(Request si) throws IOException {
         if (this.snapLog.append(si)) {
             txnCount.incrementAndGet();
@@ -696,6 +701,7 @@ public class ZKDatabase {
      * close this database. free the resources
      * @throws IOException
      */
+    @EnsuresCalledMethods(value="this.snapLog", methods="close")
     public void close() throws IOException {
         this.snapLog.close();
     }

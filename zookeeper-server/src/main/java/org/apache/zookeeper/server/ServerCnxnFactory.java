@@ -36,7 +36,7 @@ import org.apache.zookeeper.jmx.MBeanRegistry;
 import org.apache.zookeeper.server.auth.SaslServerCallbackHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import org.checkerframework.checker.mustcall.qual.CreatesMustCallFor;
 public abstract class ServerCnxnFactory {
 
     public static final String ZOOKEEPER_SERVER_CNXN_FACTORY = "zookeeper.serverCnxnFactory";
@@ -101,16 +101,20 @@ public abstract class ServerCnxnFactory {
         return zkServer;
     }
 
+    @CreatesMustCallFor("this")
     public void configure(InetSocketAddress addr, int maxcc) throws IOException {
         configure(addr, maxcc, -1);
     }
 
+    @CreatesMustCallFor("this")
     public void configure(InetSocketAddress addr, int maxcc, int backlog) throws IOException {
         configure(addr, maxcc, backlog, false);
     }
 
+    @CreatesMustCallFor("this")
     public abstract void configure(InetSocketAddress addr, int maxcc, int backlog, boolean secure) throws IOException;
 
+    @CreatesMustCallFor("this")
     public abstract void reconfigure(InetSocketAddress addr);
 
     protected SaslServerCallbackHandler saslServerCallbackHandler;

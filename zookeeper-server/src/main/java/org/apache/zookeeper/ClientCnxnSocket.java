@@ -37,6 +37,8 @@ import org.apache.zookeeper.server.ByteBufferInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.checkerframework.checker.calledmethods.qual.*;
+import org.checkerframework.checker.mustcall.qual.*;
 /**
  * A ClientCnxnSocket does the lower level communication with a socket
  * implementation.
@@ -150,6 +152,7 @@ abstract class ClientCnxnSocket {
 
     abstract boolean isConnected();
 
+    @CreatesMustCallFor("this")
     abstract void connect(InetSocketAddress addr) throws IOException;
 
     /**

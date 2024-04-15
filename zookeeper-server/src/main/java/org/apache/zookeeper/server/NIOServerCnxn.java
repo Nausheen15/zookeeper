@@ -55,17 +55,20 @@ import org.apache.zookeeper.server.command.SetTraceMaskCommand;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.checkerframework.checker.calledmethods.qual.*;
+import org.checkerframework.checker.mustcall.qual.*;
 /**
  * This class handles communication with clients using NIO. There is one per
  * client, but only one thread doing the communication.
  */
+@InheritableMustCall("close")
 public class NIOServerCnxn extends ServerCnxn {
 
     private static final Logger LOG = LoggerFactory.getLogger(NIOServerCnxn.class);
 
     private final NIOServerCnxnFactory factory;
 
-    private final SocketChannel sock;
+    private final @Owning SocketChannel sock;
 
     private final SelectorThread selectorThread;
 
@@ -92,7 +95,7 @@ public class NIOServerCnxn extends ServerCnxn {
      */
     private final boolean clientTcpKeepAlive = Boolean.getBoolean("zookeeper.clientTcpKeepAlive");
 
-    public NIOServerCnxn(ZooKeeperServer zk, SocketChannel sock, SelectionKey sk, NIOServerCnxnFactory factory, SelectorThread selectorThread) throws IOException {
+    public @MustCallAlias NIOServerCnxn(ZooKeeperServer zk, @MustCallAlias SocketChannel sock, SelectionKey sk, NIOServerCnxnFactory factory, SelectorThread selectorThread) throws IOException {
         super(zk);
         this.sock = sock;
         this.sk = sk;
@@ -599,11 +602,13 @@ public class NIOServerCnxn extends ServerCnxn {
      * Close the cnxn and remove it from the factory cnxns list.
      */
     @Override
+    @EnsuresCalledMethods(value="this.sock", methods="close")
     public void close(DisconnectReason reason) {
         disconnectReason = reason;
         close();
     }
 
+    @EnsuresCalledMethods(value="this.sock", methods="close")
     private void close() {
         setStale();
         if (!factory.removeCnxn(this)) {
@@ -629,6 +634,7 @@ public class NIOServerCnxn extends ServerCnxn {
     /**
      * Close resources associated with the sock of this cnxn.
      */
+    @EnsuresCalledMethods(value="this.sock", methods="close")
     private void closeSock() {
         if (!sock.isOpen()) {
             return;
@@ -649,6 +655,7 @@ public class NIOServerCnxn extends ServerCnxn {
     /**
      * Close resources associated with a sock.
      */
+    @EnsuresCalledMethods(value="#1", methods="close")
     public static void closeSock(SocketChannel sock) {
         if (!sock.isOpen()) {
             return;

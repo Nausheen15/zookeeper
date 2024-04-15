@@ -25,6 +25,9 @@ import javax.annotation.Nonnull;
 import org.apache.jute.BinaryInputArchive;
 import org.apache.jute.Record;
 
+import org.checkerframework.checker.mustcall.qual.MustCall;
+
+@MustCall({})
 public class ByteBufferInputStream extends InputStream {
 
     private final ByteBuffer bb;

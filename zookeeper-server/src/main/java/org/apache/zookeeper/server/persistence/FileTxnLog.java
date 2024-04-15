@@ -53,6 +53,8 @@ import org.apache.zookeeper.txn.TxnHeader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.checkerframework.checker.calledmethods.qual.*;
+import org.checkerframework.checker.mustcall.qual.*;
 /**
  * This class implements the TxnLog interface. It provides api's
  * to access the txnlogs and add entries to it.
@@ -147,7 +149,7 @@ public class FileTxnLog implements TxnLog, Closeable {
     }
 
     long lastZxidSeen;
-    volatile BufferedOutputStream logStream = null;
+    volatile @Owning BufferedOutputStream logStream = null;
     volatile OutputArchive oa;
     volatile FileOutputStream fos = null;
 
@@ -256,6 +258,7 @@ public class FileTxnLog implements TxnLog, Closeable {
      * close all the open file handles
      * @throws IOException
      */
+    @EnsuresCalledMethods(value="this.logStream", methods="close")
     public synchronized void close() throws IOException {
         if (logStream != null) {
             logStream.close();
@@ -266,6 +269,7 @@ public class FileTxnLog implements TxnLog, Closeable {
     }
 
     @Override
+    @CreatesMustCallFor("this")
     public synchronized boolean append(Request request) throws IOException {
         TxnHeader hdr = request.getHdr();
         if (hdr == null) {
@@ -550,7 +554,7 @@ public class FileTxnLog implements TxnLog, Closeable {
     static class PositionInputStream extends FilterInputStream {
 
         long position;
-        protected PositionInputStream(InputStream in) {
+        protected @MustCallAlias PositionInputStream(@MustCallAlias InputStream in) {
             super(in);
             position = 0;
         }
@@ -625,7 +629,7 @@ public class FileTxnLog implements TxnLog, Closeable {
         InputArchive ia;
         static final String CRC_ERROR = "CRC check failed";
 
-        PositionInputStream inputStream = null;
+        @Owning PositionInputStream inputStream = null;
         //stored files is the list of files greater than
         //the zxid we are looking for.
         private ArrayList<File> storedFiles;
@@ -669,6 +673,7 @@ public class FileTxnLog implements TxnLog, Closeable {
          * this is inclusive of the zxid
          * @throws IOException
          */
+        @CreatesMustCallFor("this")
         void init() throws IOException {
             storedFiles = new ArrayList<>();
             List<File> files = Util.sortDataDir(
@@ -705,6 +710,7 @@ public class FileTxnLog implements TxnLog, Closeable {
          * new file to be read
          * @throws IOException
          */
+        @CreatesMustCallFor("this")
         private boolean goToNextLog() throws IOException {
             if (storedFiles.size() > 0) {
                 this.logFile = storedFiles.remove(storedFiles.size() - 1);
@@ -735,6 +741,7 @@ public class FileTxnLog implements TxnLog, Closeable {
          * @param logFile the file to read.
          * @throws IOException
          **/
+        @CreatesMustCallFor("this")
         protected InputArchive createInputArchive(File logFile) throws IOException {
             if (inputStream == null) {
                 inputStream = new PositionInputStream(new BufferedInputStream(new FileInputStream(logFile)));
@@ -759,6 +766,7 @@ public class FileTxnLog implements TxnLog, Closeable {
          * @return true if there is more transactions to be read
          * false if not.
          */
+        @CreatesMustCallFor("this")
         public boolean next() throws IOException {
             if (ia == null) {
                 return false;
@@ -827,6 +835,7 @@ public class FileTxnLog implements TxnLog, Closeable {
          * close the iterator
          * and release the resources.
          */
+        @EnsuresCalledMethods(value="this.inputStream", methods="close")
         public void close() throws IOException {
             if (inputStream != null) {
                 inputStream.close();

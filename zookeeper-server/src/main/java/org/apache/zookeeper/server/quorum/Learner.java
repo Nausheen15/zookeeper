@@ -69,11 +69,14 @@ import org.apache.zookeeper.util.ServiceUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.checkerframework.checker.calledmethods.qual.*;
+import org.checkerframework.checker.mustcall.qual.*;
 /**
  * This class is the superclass of two of the three main actors in a ZK
  * ensemble: Followers and Observers. Both Followers and Observers share
  * a good deal of code which is moved into Peer to avoid duplication.
  */
+@InheritableMustCall("shutdown")
 public class Learner {
 
     static class PacketInFlight {
@@ -89,14 +92,14 @@ public class Learner {
 
     protected BufferedOutputStream bufferedOutput;
 
-    protected Socket sock;
+    protected @Owning Socket sock;
     protected MultipleAddresses leaderAddr;
     protected AtomicBoolean sockBeingClosed = new AtomicBoolean(false);
 
     /**
      * Socket getter
      */
-    public Socket getSocket() {
+    public @NotOwning Socket getSocket() {
         return sock;
     }
 
@@ -297,6 +300,7 @@ public class Learner {
      * Overridable helper method to simply call sock.connect(). This can be
      * overriden in tests to fake connection success/failure for connectToLeader.
      */
+    @CreatesMustCallFor("#1")
     protected void sockConnect(Socket sock, InetSocketAddress addr, int timeout) throws IOException {
         sock.connect(addr, timeout);
     }
@@ -309,6 +313,7 @@ public class Learner {
      * @throws IOException - if the socket connection fails on the 5th attempt
      * if there is an authentication failure while connecting to leader
      */
+    @CreatesMustCallFor("this")
     protected void connectToLeader(MultipleAddresses multiAddr, String hostname) throws IOException {
 
         this.leaderAddr = multiAddr;
@@ -877,6 +882,7 @@ public class Learner {
     /**
      * Shutdown the Peer
      */
+    @EnsuresCalledMethods(value="this.sock", methods="close")
     public void shutdown() {
         self.setZooKeeperServer(null);
         self.closeAllConnections();
@@ -899,6 +905,7 @@ public class Learner {
         return self.isRunning() && zk.isRunning();
     }
 
+    @EnsuresCalledMethods(value="this.sock", methods="close")
     void closeSocket() {
         if (sock != null) {
             if (sockBeingClosed.compareAndSet(false, true)) {
@@ -913,6 +920,7 @@ public class Learner {
         }
     }
 
+    @EnsuresCalledMethods(value="this.sock", methods="close")
     void closeSockSync() {
         try {
             long startTime = Time.currentElapsedTime();

@@ -41,6 +41,8 @@ import java.util.concurrent.LinkedBlockingQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.checkerframework.checker.calledmethods.qual.*;
+import org.checkerframework.checker.mustcall.qual.*;
 /**
  * NIOServerCnxnFactory implements a multi-threaded ServerCnxnFactory using
  * NIO non-blocking socket calls. Communication between threads is handled via
@@ -98,9 +100,10 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
      * of code shared by the AcceptThread (which selects on the listen socket)
      * and SelectorThread (which selects on client connections) classes.
      */
+    @InheritableMustCall("closeSelector")
     private abstract class AbstractSelectThread extends ZooKeeperThread {
 
-        protected final Selector selector;
+        protected final @Owning Selector selector;
 
         public AbstractSelectThread(String name) throws IOException {
             super(name);
@@ -118,6 +121,7 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
          * exit and no operation is going to be performed on the Selector or
          * SelectionKey
          */
+        @EnsuresCalledMethods(value="this.selector", methods="close")
         protected void closeSelector() {
             try {
                 selector.close();
@@ -136,6 +140,7 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
             }
         }
 
+        @EnsuresCalledMethods(value="#1", methods="close")
         protected void fastCloseSock(SocketChannel sc) {
             if (sc != null) {
                 try {
@@ -567,7 +572,7 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
 
     }
 
-    ServerSocketChannel ss;
+    @Owning ServerSocketChannel ss;
 
     /**
      * We use this buffer to do efficient socket I/O. Because I/O is handled
@@ -616,6 +621,7 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
     private final Set<SelectorThread> selectorThreads = new HashSet<>();
 
     @Override
+    @CreatesMustCallFor("this")
     public void configure(InetSocketAddress addr, int maxcc, int backlog, boolean secure) throws IOException {
         if (secure) {
             throw new UnsupportedOperationException("SSL isn't supported in NIOServerCnxn");
@@ -671,6 +677,7 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
         acceptThread = new AcceptThread(ss, addr, selectorThreads);
     }
 
+    @EnsuresCalledMethods(value="#1", methods="close")
     private void tryClose(ServerSocketChannel s) {
         try {
             s.close();
@@ -680,6 +687,7 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
     }
 
     @Override
+    @CreatesMustCallFor("this")
     public void reconfigure(InetSocketAddress addr) {
         ServerSocketChannel oldSS = ss;
         try {
@@ -823,7 +831,7 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory {
         touchCnxn(cnxn);
     }
 
-    protected NIOServerCnxn createConnection(SocketChannel sock, SelectionKey sk, SelectorThread selectorThread) throws IOException {
+    protected @MustCallAlias NIOServerCnxn createConnection(@MustCallAlias SocketChannel sock, SelectionKey sk, SelectorThread selectorThread) throws IOException {
         return new NIOServerCnxn(zkServer, sock, sk, this, selectorThread);
     }
 

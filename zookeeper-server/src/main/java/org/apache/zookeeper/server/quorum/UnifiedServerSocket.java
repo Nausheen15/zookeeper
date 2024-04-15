@@ -36,6 +36,8 @@ import org.apache.zookeeper.common.X509Util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.checkerframework.checker.calledmethods.qual.*;
+import org.checkerframework.checker.mustcall.qual.*;
 /**
  * A ServerSocket that can act either as a regular ServerSocket, as a SSLServerSocket, or as both, depending on
  * the constructor parameters and on the type of client (TLS or plaintext) that connects to it.
@@ -68,7 +70,7 @@ public class UnifiedServerSocket extends ServerSocket {
      * @param allowInsecureConnection if true, accept plaintext connections, otherwise close them.
      * @throws IOException if {@link ServerSocket#ServerSocket()} throws.
      */
-    public UnifiedServerSocket(X509Util x509Util, boolean allowInsecureConnection) throws IOException {
+    public @MustCall({}) UnifiedServerSocket(X509Util x509Util, boolean allowInsecureConnection) throws IOException {
         super();
         this.x509Util = x509Util;
         this.allowInsecureConnection = allowInsecureConnection;
@@ -179,8 +181,8 @@ public class UnifiedServerSocket extends ServerSocket {
 
         private final X509Util x509Util;
         private final boolean allowInsecureConnection;
-        private PrependableSocket prependableSocket;
-        private SSLSocket sslSocket;
+        private @Owning PrependableSocket prependableSocket;
+        private @Owning SSLSocket sslSocket;
         private Mode mode;
 
         /**
@@ -191,7 +193,7 @@ public class UnifiedServerSocket extends ServerSocket {
          * @param allowInsecureConnection
          * @param prependableSocket
          */
-        private UnifiedSocket(X509Util x509Util, boolean allowInsecureConnection, PrependableSocket prependableSocket) {
+        private UnifiedSocket(X509Util x509Util, boolean allowInsecureConnection, @Owning PrependableSocket prependableSocket) {
             this.x509Util = x509Util;
             this.allowInsecureConnection = allowInsecureConnection;
             this.prependableSocket = prependableSocket;
@@ -279,7 +281,7 @@ public class UnifiedServerSocket extends ServerSocket {
             }
         }
 
-        private Socket getSocketAllowUnknownMode() {
+        @NotOwning private Socket getSocketAllowUnknownMode() {
             if (isSecureSocket()) {
                 return sslSocket;
             } else { // Note: mode is UNKNOWN or PLAINTEXT
@@ -293,7 +295,7 @@ public class UnifiedServerSocket extends ServerSocket {
          * @return the underlying socket, after the socket mode has been determined.
          * @throws IOException
          */
-        private Socket getSocket() throws IOException {
+        @NotOwning private Socket getSocket() throws IOException {
             if (!isModeKnown()) {
                 detectMode();
             }
@@ -313,7 +315,7 @@ public class UnifiedServerSocket extends ServerSocket {
          * @throws IOException if detecting the socket mode fails
          * @throws SocketException if the mode is PLAINTEXT.
          */
-        public SSLSocket getSslSocket() throws IOException {
+        public @NotOwning SSLSocket getSslSocket() throws IOException {
             if (!isModeKnown()) {
                 detectMode();
             }
@@ -327,6 +329,7 @@ public class UnifiedServerSocket extends ServerSocket {
          * See {@link Socket#connect(SocketAddress)}. Calling this method does not trigger mode detection.
          */
         @Override
+        @CreatesMustCallFor("this")
         public void connect(SocketAddress endpoint) throws IOException {
             getSocketAllowUnknownMode().connect(endpoint);
         }
@@ -335,6 +338,7 @@ public class UnifiedServerSocket extends ServerSocket {
          * See {@link Socket#connect(SocketAddress, int)}. Calling this method does not trigger mode detection.
          */
         @Override
+        @CreatesMustCallFor("this")
         public void connect(SocketAddress endpoint, int timeout) throws IOException {
             getSocketAllowUnknownMode().connect(endpoint, timeout);
         }
@@ -343,6 +347,7 @@ public class UnifiedServerSocket extends ServerSocket {
          * See {@link Socket#bind(SocketAddress)}. Calling this method does not trigger mode detection.
          */
         @Override
+        @CreatesMustCallFor("this")
         public void bind(SocketAddress bindpoint) throws IOException {
             getSocketAllowUnknownMode().bind(bindpoint);
         }
@@ -580,6 +585,7 @@ public class UnifiedServerSocket extends ServerSocket {
          * See {@link Socket#close()}. Calling this method does not trigger mode detection.
          */
         @Override
+        @EnsuresCalledMethods(value="this.sslSocket", methods="close")
         public synchronized void close() throws IOException {
             getSocketAllowUnknownMode().close();
         }
@@ -693,7 +699,7 @@ public class UnifiedServerSocket extends ServerSocket {
             return getRealInputStream().read(b, off, len);
         }
 
-        private InputStream getRealInputStream() throws IOException {
+        private @NotOwning InputStream getRealInputStream() throws IOException {
             if (realInputStream == null) {
                 // Note: The first call to getSocket() triggers mode detection which can block
                 realInputStream = unifiedSocket.getSocket().getInputStream();
@@ -776,7 +782,7 @@ public class UnifiedServerSocket extends ServerSocket {
             getRealOutputStream().close();
         }
 
-        private OutputStream getRealOutputStream() throws IOException {
+        private @NotOwning OutputStream getRealOutputStream() throws IOException {
             if (realOutputStream == null) {
                 // Note: The first call to getSocket() triggers mode detection which can block
                 realOutputStream = unifiedSocket.getSocket().getOutputStream();

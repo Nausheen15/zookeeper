@@ -58,12 +58,14 @@ import org.apache.zookeeper.server.util.ZxidUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.checkerframework.checker.mustcall.qual.*;
+import org.checkerframework.checker.calledmethods.qual.EnsuresCalledMethods;
 /**
  * There will be an instance of this class created by the Leader for each
  * learner. All communication with a learner is handled by this
  * class.
  */
-public class LearnerHandler extends ZooKeeperThread {
+public  @InheritableMustCall("shutdown") class LearnerHandler extends ZooKeeperThread {
 
     private static final Logger LOG = LoggerFactory.getLogger(LearnerHandler.class);
 
@@ -76,9 +78,9 @@ public class LearnerHandler extends ZooKeeperThread {
         LOG.info("{} = {}", LEADER_CLOSE_SOCKET_ASYNC, closeSocketAsync);
     }
 
-    protected final Socket sock;
+    protected final @Owning Socket sock;
 
-    public Socket getSocket() {
+    public @NotOwning Socket getSocket() {
         return sock;
     }
 
@@ -274,7 +276,7 @@ public class LearnerHandler extends ZooKeeperThread {
      */
     private LearnerSyncThrottler syncThrottler = null;
 
-    LearnerHandler(Socket sock, BufferedInputStream bufferedInput, LearnerMaster learnerMaster) throws IOException {
+    @MustCallAlias LearnerHandler(@MustCallAlias Socket sock, BufferedInputStream bufferedInput, LearnerMaster learnerMaster) throws IOException {
         super("LearnerHandler-" + sock.getRemoteSocketAddress());
         this.sock = sock;
         this.learnerMaster = learnerMaster;
@@ -1041,6 +1043,7 @@ public class LearnerHandler extends ZooKeeperThread {
         return queuedZxid;
     }
 
+    @EnsuresCalledMethods(value="this.sock", methods="close")
     public void shutdown() {
         // Send the packet of death
         try {
